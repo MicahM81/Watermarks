@@ -9,16 +9,11 @@ class WatermarkApp:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Photo Watermarker")
-        self.root.geometry("400x200")
+        # self.root.geometry("400x200")
 
         self._build_ui()
 
     def _build_ui(self):
-        #Image Preview
-        self.image_label = tk.Label(self.root)
-        self.image_label.pack(pady=10)
-
-        # Title label
         title_label = tk.Label(
             self.root,
             text="Photo Watermarker",
@@ -26,21 +21,49 @@ class WatermarkApp:
         )
         title_label.pack(pady=10)
 
-        # Upload button
         upload_btn = tk.Button(
             self.root,
-            text="Upload Photo & Add Watermark",
+            text="Upload Photo",
             command=self.on_upload_clicked
         )
-        upload_btn.pack(pady=20)
+        upload_btn.pack(pady=5)
 
-        # Status label
-        self.status_label = tk.Label(
+        # Watermark text label + entry
+        text_frame = tk.Frame(self.root)
+        text_frame.pack(pady=5)
+
+        tk.Label(text_frame, text="Watermark Text:").pack(side="left", padx=5)
+
+        self.watermark_text_var = tk.StringVar()
+        self.watermark_text_var.set("Sample Watermark")  # default text
+
+        text_entry = tk.Entry(text_frame, textvariable=self.watermark_text_var, width=30)
+        text_entry.pack(side="left", padx=5)
+
+        apply_btn = tk.Button(
             self.root,
-            text="No image processed yet.",
-            fg="gray"
+            text="Apply Watermark",
+            command=self.on_apply_watermark,
+            state="disabled"  # disabled until an image is loaded
         )
+        apply_btn.pack(pady=5)
+        self.apply_btn = apply_btn
+
+        save_btn = tk.Button(
+            self.root,
+            text="Save Watermarked Image",
+            command=self.on_save_clicked,
+            state="disabled"
+        )
+        save_btn.pack(pady=5)
+        self.save_btn = save_btn
+
+        self.status_label = tk.Label(self.root, text="", fg="gray")
         self.status_label.pack(pady=10)
+
+        # Preview area
+        self.image_label = tk.Label(self.root)
+        self.image_label.pack(pady=10)
 
     def on_upload_clicked(self):
         file_path = filedialog.askopenfilename(
@@ -54,32 +77,74 @@ class WatermarkApp:
         if not file_path:
             return
 
+        self.original_path = file_path
+        self.status_label.config(text="Image loaded. Ready to apply watermark.")
+
+        # Display preview of original image
+        self.show_image_preview(file_path)
+
+        # Enable next step
+        self.apply_btn.config(state="normal")
+
+        # Auto-resize window to fit new preview
+        self.root.update_idletasks()
+        self.root.geometry("")
+
+    def on_apply_watermark(self):
+        from watermark import apply_watermark_preview
+
+        wm_text = self.watermark_text_var.get()
+
         try:
-            output_path = apply_watermark(file_path)
+            preview_image = apply_watermark_preview(self.original_path, wm_text)
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to apply watermark:\n{e}")
+            messagebox.showerror("Error", str(e))
             return
 
-        self.status_label.config(text=f"Watermarked image saved:\n{output_path}")
+        self.watermarked_image = preview_image
+        self.status_label.config(text="Preview updated with watermark.")
 
-        # --- NEW CODE: Display output image in GUI ---
+        self.show_image_preview(preview_image)
+
+        self.root.update_idletasks()
+        self.root.geometry("")
+
+        self.save_btn.config(state="normal")
+
+    def on_save_clicked(self):
+        if not hasattr(self, "watermarked_image"):
+            messagebox.showwarning("No Image", "You must apply the watermark first.")
+            return
+
+        save_path = filedialog.asksaveasfilename(
+            defaultextension=".jpg",
+            filetypes=[("JPEG", "*.jpg"), ("PNG", "*.png"), ("All Files", "*.*")]
+        )
+
+        if not save_path:
+            return
+
+        self.watermarked_image.save(save_path)
+        self.status_label.config(text=f"Saved: {save_path}")
+        messagebox.showinfo("Saved", f"Watermarked image saved to:\n{save_path}")
+
+    def show_image_preview(self, image_source):
         from PIL import Image, ImageTk
-        image = Image.open(output_path)
 
-        # Resize to fit the window width
+        if isinstance(image_source, str):
+            image = Image.open(image_source)
+        else:
+            image = image_source
+
+        # Resize image for UI
         max_width = 350
         if image.width > max_width:
             ratio = max_width / image.width
             new_size = (max_width, int(image.height * ratio))
             image = image.resize(new_size, Image.Resampling.LANCZOS)
 
-        tk_image = ImageTk.PhotoImage(image)
-
-        # Save reference or Tkinter will garbage-collect it
-        self.display_image = tk_image
-        self.image_label.config(image=tk_image)
-
-        messagebox.showinfo("Success", f"Watermarked image saved to:\n{output_path}")
+        self.display_image = ImageTk.PhotoImage(image)
+        self.image_label.config(image=self.display_image)
 
     def run(self):
         self.root.mainloop()

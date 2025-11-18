@@ -2,7 +2,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 
-def apply_watermark(input_path: str) -> str:
+def apply_watermark(input_path: str, watermark_text: str) -> str:
     """
     Takes a path to an image, adds a simple text watermark,
     and saves a new image next to the original.
@@ -12,7 +12,7 @@ def apply_watermark(input_path: str) -> str:
     image = Image.open(input_path).convert("RGBA")
 
     # Create watermark overlay
-    watermark_text = "micahmoffett.com"
+    watermark_text = watermark_text
     width, height = image.size
     watermark_layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(watermark_layer)
@@ -43,3 +43,32 @@ def apply_watermark(input_path: str) -> str:
     watermarked.convert("RGB").save(output_path)
 
     return str(output_path)
+
+def apply_watermark_preview(input_path: str, watermark_text: str):
+    from PIL import Image, ImageDraw, ImageFont
+
+    image = Image.open(input_path).convert("RGBA")
+
+    width, height = image.size
+    watermark_layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(watermark_layer)
+
+    font_size = max(20, width // 20)
+    try:
+        font = ImageFont.truetype("arial.ttf", font_size)
+    except OSError:
+        font = ImageFont.load_default()
+
+    bbox = draw.textbbox((0, 0), watermark_text, font=font)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+
+    padding = 10
+    x = width - text_width - padding
+    y = height - text_height - padding
+
+    draw.text((x, y), watermark_text, font=font, fill=(255, 255, 255, 128))
+
+    watermarked = Image.alpha_composite(image, watermark_layer)
+
+    return watermarked.convert("RGB")
