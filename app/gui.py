@@ -14,6 +14,10 @@ class WatermarkApp:
         self._build_ui()
 
     def _build_ui(self):
+        #Image Preview
+        self.image_label = tk.Label(self.root)
+        self.image_label.pack(pady=10)
+
         # Title label
         title_label = tk.Label(
             self.root,
@@ -48,7 +52,7 @@ class WatermarkApp:
         )
 
         if not file_path:
-            return  # user cancelled
+            return
 
         try:
             output_path = apply_watermark(file_path)
@@ -56,7 +60,25 @@ class WatermarkApp:
             messagebox.showerror("Error", f"Failed to apply watermark:\n{e}")
             return
 
-        self.status_label.config(text=f"Saved watermarked image:\n{output_path}")
+        self.status_label.config(text=f"Watermarked image saved:\n{output_path}")
+
+        # --- NEW CODE: Display output image in GUI ---
+        from PIL import Image, ImageTk
+        image = Image.open(output_path)
+
+        # Resize to fit the window width
+        max_width = 350
+        if image.width > max_width:
+            ratio = max_width / image.width
+            new_size = (max_width, int(image.height * ratio))
+            image = image.resize(new_size, Image.Resampling.LANCZOS)
+
+        tk_image = ImageTk.PhotoImage(image)
+
+        # Save reference or Tkinter will garbage-collect it
+        self.display_image = tk_image
+        self.image_label.config(image=tk_image)
+
         messagebox.showinfo("Success", f"Watermarked image saved to:\n{output_path}")
 
     def run(self):

@@ -12,7 +12,7 @@ def apply_watermark(input_path: str) -> str:
     image = Image.open(input_path).convert("RGBA")
 
     # Create watermark overlay
-    watermark_text = "Sample Watermark"
+    watermark_text = "micahmoffett.com"
     width, height = image.size
     watermark_layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(watermark_layer)
@@ -24,7 +24,9 @@ def apply_watermark(input_path: str) -> str:
     except OSError:
         font = ImageFont.load_default()
 
-    text_width, text_height = draw.textsize(watermark_text, font=font)
+    bbox = draw.textbbox((0,0),text=watermark_text, font=font)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
 
     # Bottom-right corner with small padding
     padding = 10
